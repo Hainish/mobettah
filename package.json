@@ -1,0 +1,19 @@
+{
+  "author": "tedsuo,Hainish",
+  "name": "mobettah",
+  "description": "Process monitoring done easy",
+  "version": "0.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Hainish/mobettah.git"
+  },
+  "engines": {
+    "node": ">=0.4"
+  },
+  "dependencies": {
+    "colors": ">=0.5.1",
+    "mail": ">=0.2.3"
+  },
+  "main" : "mobettah",
+  "devDependencies": {}
+}
