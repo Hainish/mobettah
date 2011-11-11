@@ -2,8 +2,10 @@
 var config = require('./config');
 var spawn = require('child_process').spawn;
 var colors = require('colors');
-var mail = require('mail').Mail(config);
+var mail = require('mail').Mail(config.mail);
+var fs = require('fs');
 
+var PID_FILE_PATH = "/tmp/mobettah.pid";
 var RESTART_INTERVAL = 1000; // 1 second
 var UNIT_TIME = 3600000; // 1 hour
 var ALERT_INTERVAL = 3600000; // 1 hour
@@ -11,25 +13,54 @@ var MAX_RESTARTS_ALLOWED = 6;
 var restart = true;
 var rput = 0;
 var restart_message_sent_recently = false;
+var child = undefined;
 
-run_jb();
+create_pid_file();
 
-function run_jb(){
-  var jb = spawn('node',['job_board.js']);
-  console.log('Spawning a new job board process');
+start();
 
-  jb.stdout.on('data', function(data){
+process.on('SIGINT', function(){
+  stop();
+});
+
+process.on('SIGTERM', function(){
+  stop();
+});
+
+function start(){
+  child = spawn(process.argv[2], process.argv.slice(3));
+  console.log('Spawning a new child process');
+
+  child.stdout.on('data', function(data){
     process.stdout.write('I '.green + data);
   });
 
-  jb.stderr.on('data', function(data){
+  child.stderr.on('data', function(data){
     process.stdout.write('E '.red + data);
   });
 
-  jb.on('exit', function(code){
-    console.log('job board exited with code ' + code);   
+  child.on('exit', function(code){
+    console.log('child process exited with code ' + code);   
     handle_child_exit();
   });
+}
+
+function stop(){
+  child.removeAllListeners('exit');
+  child.on('exit',function(){
+    delete_pid_file();
+    console.log('Child process killed.  exiting mobettah...');
+    process.exit();
+  });
+  child.kill();
+}
+
+function create_pid_file(){
+  fs.writeFileSync(PID_FILE_PATH, process.pid);
+}
+
+function delete_pid_file(){
+  fs.unlinkSync(PID_FILE_PATH);
 }
 
 function check_status(){
@@ -48,7 +79,7 @@ function check_status(){
   }
 }
 
-function handle_child_exit(){
+function handle_child_exit(command, callback){
   // log restart attempt, send alert if max restarts is exceeded
   rput++;
   setTimeout(function(){
@@ -59,7 +90,7 @@ function handle_child_exit(){
 
   // restart proccess or send restart failed alert
   if(restart){
-    run_jb();
+    start();
     restart = false;
     setTimeout(function(){
       restart = true;
@@ -71,6 +102,7 @@ function handle_child_exit(){
       } else {
         console.log('Alert sent: failed restart. shutting down.');
       }
+      delete_pid_file();
       process.exit();
     });
   }
@@ -86,8 +118,8 @@ function alert_max_restarts_exceeded(callback){
 
 function alert_helper(subject, body, callback){
   mail.message({
-    from: config.username,
-    to: [config.recipient],
+    from: config.mail.username,
+    to: [config.mail.recipient],
     subject: subject
   })
   .body(body)
