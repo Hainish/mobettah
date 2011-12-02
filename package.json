@@ -2,7 +2,7 @@
   "author": "tedsuo,Hainish",
   "name": "mobettah",
   "description": "Process monitoring done easy",
-  "version": "0.0.0",
+  "version": "0.0.5",
   "repository": {
     "type": "git",
     "url": "git://github.com/Hainish/mobettah.git"
