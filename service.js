@@ -4,6 +4,7 @@ var spawn = require('child_process').spawn;
 var colors = require('colors');
 var mail = require('mail').Mail(config.mail);
 var fs = require('fs');
+require('./lib/date');
 
 var PID_FILE_PATH = "/tmp/mobettah.pid";
 var RESTART_INTERVAL = 1000; // 1 second
@@ -14,10 +15,13 @@ var restart = true;
 var rput = 0;
 var restart_message_sent_recently = false;
 var child = undefined;
-
+console.log(Date.now());
 create_pid_file();
-
-start();
+var logfile = fs.createWriteStream(config.log_file, {
+  flags: 'a', 
+  mode: 0644, 
+  encoding: null
+});
 
 process.on('SIGINT', function(){
   stop();
@@ -27,20 +31,24 @@ process.on('SIGTERM', function(){
   stop();
 });
 
+start();
+
 function start(){
   child = spawn(process.argv[2], process.argv.slice(3));
-  console.log('Spawning a new child process');
+  log('Spawning a new child process');
 
   child.stdout.on('data', function(data){
     process.stdout.write('I '.green + data);
+    logfile.write('I ' + data);
   });
 
   child.stderr.on('data', function(data){
-    process.stdout.write('E '.red + data);
+    process.stderr.write('E '.red + data);
+    logfile.write('E ' + data);
   });
 
   child.on('exit', function(code){
-    console.log('child process exited with code ' + code);   
+    log('child process exited with code ' + code);   
     handle_child_exit();
   });
 }
@@ -49,7 +57,7 @@ function stop(){
   child.removeAllListeners('exit');
   child.on('exit',function(){
     delete_pid_file();
-    console.log('Child process killed.  exiting mobettah...');
+    log('Child process killed.  exiting mobettah...');
     process.exit();
   });
   child.kill();
@@ -67,9 +75,9 @@ function check_status(){
   if(rput > MAX_RESTARTS_ALLOWED && !restart_message_sent_recently){
     alert_max_restarts_exceeded(function(err){
       if(err){
-        console.log('Alert NOT sent: max restarts exceeded')
+        log('Alert NOT sent: max restarts exceeded')
       } else {
-        console.log('Alert sent: max restarts exceeded');
+        log('Alert sent: max restarts exceeded');
       }
     });
     restart_message_sent_recently = true;
@@ -98,9 +106,9 @@ function handle_child_exit(command, callback){
   } else {
     alert_failed_restart(function(err){
       if(err){
-        console.log('Alert NOT sent: failed restart. shutting down. You are screwed.');
+        log('Alert NOT sent: failed restart. shutting down. You are screwed.');
       } else {
-        console.log('Alert sent: failed restart. shutting down.');
+        log('Alert sent: failed restart. shutting down.');
       }
       delete_pid_file();
       process.exit();
@@ -130,4 +138,9 @@ function alert_helper(subject, body, callback){
       callback(null);
     }
   }); 
+}
+
+function log(message){
+  console.log(message);
+  logfile.write(Date.now() + "\t" + message +"\n");
 }
