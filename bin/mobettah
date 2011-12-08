@@ -1,10 +1,29 @@
 #!/usr/bin/env node
-var config = require('./config');
+
+if(process.argv.length <= 2){
+  print_usage();
+  process.exit();
+}
+
+function print_usage(){
+  console.log('\nUsage: mobettah [-c <configfile>] command [options]\n');
+}
+
 var spawn = require('child_process').spawn;
 var colors = require('colors');
-var mail = require('mail').Mail(config.mail);
 var fs = require('fs');
-require('./lib/date');
+require('../lib/date');
+
+if(process.argv[2] == "-c"){
+  var config_file = process.argv[3];
+  var command_starts = 4;
+} else {
+  var config_file = '../config';
+  var command_starts = 2;
+}
+
+var config = require(config_file);
+var mail = require('mail').Mail(config.mail);
 
 var PID_FILE_PATH = "/tmp/mobettah.pid";
 var RESTART_INTERVAL = 1000; // 1 second
@@ -34,7 +53,7 @@ process.on('SIGTERM', function(){
 start();
 
 function start(){
-  child = spawn(process.argv[2], process.argv.slice(3));
+  child = spawn(process.argv[command_starts], process.argv.slice(command_starts + 1));
   log('Spawning a new child process');
 
   child.stdout.on('data', function(data){
