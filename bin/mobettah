@@ -18,7 +18,7 @@ var config_file;
 var command_starts = 2;
 
 if(process.argv[2] == "-c"){
-  var config_file = process.argv[3];
+  config_file = process.argv[3];
   command_starts = 4;
 } else if(process.env.MOBETTAH_CONFFILE) {
   config_file = process.env.MOBETTAH_CONFFILE; 
@@ -38,7 +38,7 @@ var restart = true;
 var rput = 0;
 var restart_message_sent_recently = false;
 var child = undefined;
-console.log(Date.now());
+var stdout_available = true;
 create_pid_file();
 var logfile = fs.createWriteStream(config.log_file, {
   flags: 'a', 
@@ -46,12 +46,21 @@ var logfile = fs.createWriteStream(config.log_file, {
   encoding: null
 });
 
+log(Date.now());
+
 process.on('SIGINT', function(){
   stop();
 });
 
 process.on('SIGTERM', function(){
   stop();
+});
+
+process.stdout.on('error', function(){
+  if(stdout_available == true){
+    stdout_available = false;
+    logfile.write('E stdout no longer available');
+  }
 });
 
 start();
