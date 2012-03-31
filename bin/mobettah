@@ -12,14 +12,18 @@ function print_usage(){
 var spawn = require('child_process').spawn;
 var colors = require('colors');
 var fs = require('fs');
+var default_mobettah_conffile = '/etc/mobettah.js';
 require('../lib/date');
+var config_file;
+var command_starts = 2;
 
 if(process.argv[2] == "-c"){
   var config_file = process.argv[3];
-  var command_starts = 4;
+  command_starts = 4;
+} else if(process.env.MOBETTAH_CONFFILE) {
+  config_file = process.env.MOBETTAH_CONFFILE; 
 } else {
-  var config_file = '../config';
-  var command_starts = 2;
+  config_file = default_mobettah_conffile;
 }
 
 var config = require(config_file);
